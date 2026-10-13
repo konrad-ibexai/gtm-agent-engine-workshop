@@ -58,7 +58,8 @@ def build_prospect_profile(prospect_id: str) -> dict:
         return {"prospect_profile": None, "found": False}
     built = {
         "prospect_id": prospect_id,
-        **rec,
+        **{key: value for key, value in rec.items()
+           if key != "billing_qualification"},
         "engagement_history": data_service.fetch_engagement_history(prospect_id),
         "account_details": data_service.fetch_account_details(prospect_id),
         "tech_stack": data_service.fetch_tech_stack(prospect_id),
@@ -108,6 +109,8 @@ def score_prospect(prospect_profile: dict, offering: dict | None = None) -> dict
     if offering is None or not _offering_has_required_fields(offering):
         return {"score": None, "error": "Cannot score without a valid offering."}
     # Score against the prospect's saved tech stack of record.
+    prospect_profile = {key: value for key, value in prospect_profile.items()
+                        if key != "billing_qualification"}
     pid = prospect_profile.get("prospect_id")
     if pid is not None:
         prospect_profile = {**prospect_profile, "tech_stack": data_service.fetch_tech_stack(pid)}
@@ -128,12 +131,9 @@ def get_prospect(prospect_id: str) -> dict:
     record = data_service.get_prospect_record(prospect_id)
     if record is None:
         return {"prospect": None, "found": False}
-    # Carry the contact fields through, dropping the bulky enrichment blobs the
-    # caller can pull from build_prospect_profile instead.
     contact = {
         "prospect_id": prospect_id,
-        **{k: v for k, v in record.items()
-           if k not in ("engagement_history", "account_details", "tech_stack")},
+        **{key: record[key] for key in ("name", "email") if key in record},
     }
     return {"prospect": contact, "found": True}
 
